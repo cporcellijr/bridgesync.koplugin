@@ -1,0 +1,31 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build and publish the plugin zip
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(sed -n 's/.*version = "\(.*\)".*/\1/p' bridgesync.koplugin/_meta.lua)
+          # Plugin stores compare the release tag with _meta.lua to offer updates.
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match _meta.lua version $version"
+            exit 1
+          fi
+          zip -qr "bridgesync-$version.zip" bridgesync.koplugin
+          gh release create "$GITHUB_REF_NAME" "bridgesync-$version.zip" \
+            --title "BridgeSync $version" \
+            --notes "BridgeSync $version for KOReader. Needs a [BookBridge](https://github.com/cporcellijr/bookbridge) server; see the BookBridge release notes for what changed."
